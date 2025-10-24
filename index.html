@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>材料长度重量计算器</title>
+    <!-- 优先加载Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" crossorigin="anonymous">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#722ED1',
+                        neutral: '#86909C',
+                        light: '#F2F3F5',
+                        dark: '#1D2129',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+            }
+            .input-focus {
+                @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+            }
+            .btn-hover {
+                @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300;
+            }
+            /* 搜索容器样式 */
+            .search-container {
+                position: relative;
+                width: 100%;
+            }
+            /* 搜索下拉面板样式 */
+            .search-dropdown {
+                position: absolute;
+                top: calc(100% + 2px);
+                left: 0;
+                right: 0;
+                max-height: 220px;
+                overflow-y: auto;
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+                z-index: 100;
+                display: none;
+                transform-origin: top;
+                transform: scaleY(0.95);
+                opacity: 0;
+                transition: transform 0.15s ease, opacity 0.15s ease;
+            }
+            .search-dropdown.show {
+                display: block;
+                transform: scaleY(1);
+                opacity: 1;
+            }
+            .search-item {
+                padding: 10px 14px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+            .search-item:hover {
+                background-color: #f0f5ff;
+            }
+            /* 铜排尺寸选择器样式 */
+            .size-selector {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 6px;
+                margin-bottom: 4px;
+            }
+            .size-option {
+                padding: 3px 10px;
+                border-radius: 4px;
+                border: 1px solid #ddd;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 14px;
+            }
+            .size-option:hover {
+                border-color: #165DFF;
+                background-color: #f0f5ff;
+            }
+            .size-option.selected {
+                background-color: #165DFF;
+                color: white;
+                border-color: #165DFF;
+            }
+            .option-divider {
+                padding: 4px 0 !important;
+                background: repeating-linear-gradient(90deg, #ddd, #ddd 5px, transparent 5px, transparent 10px);
+                pointer-events: none;
+                height: auto !important;
+            }
+        }
+    </style>
+    <style>
+        select {
+            padding-left: 8px !important;
+        }
+        select option {
+            line-height: 2;
+            padding: 4px 8px;
+        }
+        .search-highlight {
+            background-color: #FFF9C4;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-dark">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-md fixed w-full top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-calculator text-primary text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-primary">材料长度重量计算器</h1>
+            </div>
+            <nav class="hidden md:flex items-center space-x-6">
+                <a href="#" class="text-neutral hover:text-primary transition-colors duration-200">首页</a>
+                <a href="#materials" class="text-neutral hover:text-primary transition-colors duration-200">材料类型</a>
+                <a href="#calculator" class="text-neutral hover:text-primary transition-colors duration-200">计算器</a>
+                <a href="#about" class="text-neutral hover:text-primary transition-colors duration-200">关于</a>
+            </nav>
+            <button class="md:hidden text-neutral text-xl">
+                <i class="fa fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 pt-24 pb-16">
+        <!-- 介绍部分 -->
+        <section class="mb-16 text-center">
+            <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-4 text-dark">专业材料计算工具</h2>
+            <p class="text-neutral max-w-2xl mx-auto text-lg">
+                快速计算钢芯铝绞线、耐热铝合金导线、铜排和多种五金材料的长度与重量，支持多种单位转换，满足工程计算需求。
+            </p>
+        </section>
+
+        <!-- 材料类型选择 -->
+        <section id="materials" class="mb-16">
+            <h3 class="text-2xl font-bold mb-6 text-center">选择材料类型</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- 钢芯铝绞线 -->
+                <div class="material-card bg-white rounded-xl p-6 card-shadow cursor-pointer hover:border-primary border-2 border-transparent transition-all duration-300" data-material="acsr" data-density="3.85">
+                    <div class="flex justify-center mb-4">
+                        <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                            <i class="fa fa-cogs text-primary text-2xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="text-xl font-semibold text-center mb-2">钢芯铝绞线</h4>
+                    <p class="text-neutral text-center text-sm">ACSR (Aluminum Conductor Steel Reinforced)</p>
+                    <div class="mt-4 text-center text-sm text-neutral">
+                        <span class="font-medium">包含具体型号数据</span>
+                    </div>
+                </div>
+
+                <!-- 耐热铝合金导线 -->
+                <div class="material-card bg-white rounded-xl p-6 card-shadow cursor-pointer hover:border-primary border-2 border-transparent transition-all duration-300" data-material="heat-resistant" data-density="2.73">
+                    <div class="flex justify-center mb-4">
+                        <div class="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center">
+                            <i class="fa fa-fire text-secondary text-2xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="text-xl font-semibold text-center mb-2">耐热铝合金导线</h4>
+                    <p class="text-neutral text-center text-sm">Heat Resistant Aluminum Alloy</p>
+                    <div class="mt-4 text-center text-sm text-neutral">
+                        <span class="font-medium">包含具体型号数据</span>
+                    </div>
+                </div>
+
+                <!-- 铜排 -->
+                <div class="material-card bg-white rounded-xl p-6 card-shadow cursor-pointer hover:border-primary border-2 border-transparent transition-all duration-300" data-material="copper-busbar" data-density="8900">
+                    <div class="flex justify-center mb-4">
+                        <div class="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center">
+                            <i class="fa fa-bolt text-amber-500 text-2xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="text-xl font-semibold text-center mb-2">铜排</h4>
+                    <p class="text-neutral text-center text-sm">Copper Busbar</p>
+                    <div class="mt-4 text-center text-sm text-neutral">
+                        <span class="font-medium">密度: </span>8900 kg/m³
+                    </div>
+                </div>
+
+                <!-- 五金 -->
+                <div class="material-card bg-white rounded-xl p-6 card-shadow cursor-pointer hover:border-primary border-2 border-transparent transition-all duration-300" data-material="hardware" data-density="7850">
+                    <div class="flex justify-center mb-4">
+                        <div class="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
+                            <i class="fa fa-wrench text-accent text-2xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="text-xl font-semibold text-center mb-2">五金材料</h4>
+                    <p class="text-neutral text-center text-sm">槽钢、扁钢、等边角钢</p>
+                    <div class="mt-4 text-center text-sm text-neutral">
+                        <span class="font-medium">密度: </span>7850 kg/m³
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 计算器部分 -->
+        <section id="calculator" class="bg-white rounded-2xl p-6 md:p-8 card-shadow mb-16">
+            <h3 class="text-2xl font-bold mb-6 text-center">长度重量计算器</h3>
+            
+            <div class="mb-8">
+                <div class="flex items-center justify-center mb-2 flex-wrap">
+                    <span id="selected-material" class="text-lg font-medium text-primary">请选择材料类型</span>
+                    <span id="selected-subtype" class="ml-2 text-sm text-neutral hidden"></span>
+                    <span id="material-density" class="ml-4 text-sm text-neutral hidden">密度: <span class="font-medium"></span> kg/m³</span>
+                </div>
+                <div class="h-px bg-gray-200"></div>
+            </div>
+
+            <!-- 五金材料子类型选择 -->
+            <div id="hardware-type-selector" class="mb-8 hidden">
+                <label class="block text-neutral font-medium mb-2">五金材料类型</label>
+                <select id="hardware-type" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                    <option value="">请选择五金材料类型</option>
+                    <option value="channel-steel">槽钢</option>
+                    <option value="flat-steel">扁钢</option>
+                    <option value="angle-steel">等边角钢</option>
+                </select>
+            </div>
+
+            <!-- 槽钢型号选择 -->
+            <div id="channel-steel-type-selector" class="mb-8 hidden">
+                <label class="block text-neutral font-medium mb-2">槽钢型号</label>
+                <select id="channel-steel-type" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                    <option value="">请选择槽钢型号</option>
+                    <option value="6.3" data-weight="6.634">#6.3 (6.634 kg/m)</option>
+                    <option value="8" data-weight="8.045">#8 (8.045 kg/m)</option>
+                    <option value="10" data-weight="10.007">#10 (10.007 kg/m)</option>
+                    <option value="12" data-weight="12.059">#12 (12.059 kg/m)</option>
+                    <option value="14a" data-weight="14.535">#14a (14.535 kg/m)</option>
+                    <option value="14b" data-weight="16.733">#14b (16.733 kg/m)</option>
+                </select>
+            </div>
+
+            <!-- 钢芯铝绞线型号选择（带搜索功能） -->
+            <div id="acsr-type-selector" class="mb-8 hidden">
+                <label class="block text-neutral font-medium mb-2">钢芯铝绞线型号 (JL/G1A)</label>
+                <div class="search-container">
+                    <input type="text" id="acsr-search" placeholder="搜索型号..." 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus search-input">
+                    <div class="search-dropdown" id="acsr-search-results"></div>
+                    <select id="acsr-type" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                        <option value="">请选择具体型号</option>
+                        <option value="95/15" data-weight="380.8">JL/G1A-95/15 (380.8 kg/km)</option>
+                        <option value="120/20" data-weight="466.8">JL/G1A-120/20 (466.8 kg/km)</option>
+                        <option value="120/25" data-weight="526.6">JL/G1A-120/25 (526.6 kg/km)</option>
+                        <option value="150/20" data-weight="549.4">JL/G1A-150/20 (549.4 kg/km)</option>
+                        <option value="150/25" data-weight="601.0">JL/G1A-150/25 (601.0 kg/km)</option>
+                        <option class="option-divider" disabled>──────────────────────────</option>
+                        <option value="185/25" data-weight="706.1">JL/G1A-185/25 (706.1 kg/km)</option>
+                        <option value="210/25" data-weight="789.1">JL/G1A-210/25 (789.1 kg/km)</option>
+                        <option value="240/30" data-weight="922.2">JL/G1A-240/30 (922.2 kg/km)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 耐热铝合金导线型号选择（带搜索功能） -->
+            <div id="heat-resistant-type-selector" class="mb-8 hidden">
+                <label class="block text-neutral font-medium mb-2">耐热铝合金导线型号</label>
+                <div class="search-container">
+                    <input type="text" id="heat-resistant-search" placeholder="搜索型号..." 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus search-input">
+                    <div class="search-dropdown" id="heat-resistant-search-results"></div>
+                    <select id="heat-resistant-type" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                        <option value="">请选择具体型号</option>
+                        <option value="NAHLGJQ-1440" data-weight="4.942">NAHLGJQ-1440 (NRLH60/G1A,1440/120) - 4.942 kg/m</option>
+                        <option value="NAHLGJQ-1250" data-weight="4.325">NAHLGJQ-1250 (NRLH60/G1A,1250/100) - 4.325 kg/m</option>
+                        <option value="NAHLGJQ-1000" data-weight="3.542">NAHLGJQ-1000 (NRLH60/G1A,1000/80) - 3.542 kg/m</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 计算选项卡 -->
+            <div class="mb-6">
+                <div class="flex border-b border-gray-200">
+                    <button id="length-to-weight-tab" class="py-2 px-4 font-medium text-primary border-b-2 border-primary">
+                        长度 → 重量
+                    </button>
+                    <button id="weight-to-length-tab" class="py-2 px-4 font-medium text-neutral hover:text-primary">
+                        重量 → 长度
+                    </button>
+                </div>
+            </div>
+
+            <!-- 长度转重量部分 -->
+            <div id="length-to-weight" class="mb-6">
+                <!-- 尺寸输入区域 -->
+                <div id="dimensions-inputs" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 hidden">
+                    <!-- 铜排尺寸输入 -->
+                    <div id="copper-busbar-dimensions" class="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
+                        <div class="form-group">
+                            <label for="copper-width" class="block text-neutral font-medium mb-2">宽度 (mm)</label>
+                            <div class="flex">
+                                <input type="number" id="copper-width" step="0.1" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入宽度">
+                                <span class="ml-2 flex items-center text-neutral">mm</span>
+                            </div>
+                            <div class="size-selector" id="copper-width-options">
+                                <div class="size-option" data-value="10">10mm</div>
+                                <div class="size-option" data-value="15">15mm</div>
+                                <div class="size-option" data-value="20">20mm</div>
+                                <div class="size-option" data-value="25">25mm</div>
+                                <div class="size-option" data-value="30">30mm</div>
+                                <div class="size-option" data-value="40">40mm</div>
+                                <div class="size-option" data-value="50">50mm</div>
+                                <div class="size-option" data-value="60">60mm</div>
+                                <div class="size-option" data-value="80">80mm</div>
+                                <div class="size-option" data-value="100">100mm</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="copper-thickness" class="block text-neutral font-medium mb-2">厚度 (mm)</label>
+                            <div class="flex">
+                                <input type="number" id="copper-thickness" step="0.1" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入厚度">
+                                <span class="ml-2 flex items-center text-neutral">mm</span>
+                            </div>
+                            <div class="size-selector" id="copper-thickness-options">
+                                <div class="size-option" data-value="3">3mm</div>
+                                <div class="size-option" data-value="4">4mm</div>
+                                <div class="size-option" data-value="5">5mm</div>
+                                <div class="size-option" data-value="6">6mm</div>
+                                <div class="size-option" data-value="8">8mm</div>
+                                <div class="size-option" data-value="10">10mm</div>
+                                <div class="size-option" data-value="12">12mm</div>
+                                <div class="size-option" data-value="15">15mm</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="copper-length" class="block text-neutral font-medium mb-2">长度</label>
+                            <div class="flex">
+                                <input type="number" id="copper-length" step="0.01" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入长度">
+                                <select id="copper-length-unit" class="ml-2 px-3 py-2 border border-gray-300 rounded-lg bg-white input-focus">
+                                    <option value="m">米 (m)</option>
+                                    <option value="km">千米 (km)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 扁钢尺寸输入 -->
+                    <div id="flat-steel-dimensions" class="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
+                        <div class="form-group">
+                            <label for="flat-width" class="block text-neutral font-medium mb-2">宽度 (mm)</label>
+                            <div class="flex">
+                                <input type="number" id="flat-width" step="0.1" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入宽度">
+                                <span class="ml-2 flex items-center text-neutral">mm</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="flat-thickness" class="block text-neutral font-medium mb-2">厚度 (mm)</label>
+                            <div class="flex">
+                                <input type="number" id="flat-thickness" step="0.1" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入厚度">
+                                <span class="ml-2 flex items-center text-neutral">mm</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="flat-length" class="block text-neutral font-medium mb-2">长度</label>
+                            <div class="flex">
+                                <input type="number" id="flat-length" step="0.01" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入长度">
+                                <select id="flat-length-unit" class="ml-2 px-3 py-2 border border-gray-300 rounded-lg bg-white input-focus">
+                                    <option value="m">米 (m)</option>
+                                    <option value="km">千米 (km)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 等边角钢尺寸输入 -->
+                    <div id="angle-steel-dimensions" class="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
+                        <div class="form-group">
+                            <label for="angle-side" class="block text-neutral font-medium mb-2">边宽 (mm)</label>
+                            <div class="flex">
+                                <input type="number" id="angle-side" step="0.1" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入边宽">
+                                <span class="ml-2 flex items-center text-neutral">mm</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="angle-thickness" class="block text-neutral font-medium mb-2">厚度 (mm)</label>
+                            <div class="flex">
+                                <input type="number" id="angle-thickness" step="0.1" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入厚度">
+                                <span class="ml-2 flex items-center text-neutral">mm</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="angle-length" class="block text-neutral font-medium mb-2">长度</label>
+                            <div class="flex">
+                                <input type="number" id="angle-length" step="0.01" min="0" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                    placeholder="输入长度">
+                                <select id="angle-length-unit" class="ml-2 px-3 py-2 border border-gray-300 rounded-lg bg-white input-focus">
+                                    <option value="m">米 (m)</option>
+                                    <option value="km">千米 (km)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 通用长度输入区域 -->
+                <div id="general-length-input" class="mb-8 hidden">
+                    <div class="form-group">
+                        <label for="general-length" class="block text-neutral font-medium mb-2">长度</label>
+                        <div class="flex">
+                            <input type="number" id="general-length" step="0.01" min="0" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                placeholder="输入长度">
+                            <select id="general-length-unit" class="ml-2 px-3 py-2 border border-gray-300 rounded-lg bg-white input-focus">
+                                <option value="km" id="length-default-km">千米 (km)</option>
+                                <option value="m">米 (m)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="weight-result" class="block text-neutral font-medium mb-2">计算结果 (重量)</label>
+                    <div class="flex">
+                        <input type="number" id="weight-result" readonly 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                            placeholder="重量结果">
+                        <select id="weight-unit" class="ml-2 px-3 py-2 border border-gray-300 rounded-lg bg-white input-focus">
+                            <option value="kg">千克 (kg)</option>
+                            <option value="t" id="weight-default-t">吨 (t)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 重量转长度部分 -->
+            <div id="weight-to-length" class="mb-6 hidden">
+                <!-- 铜排专用尺寸选择（重量转长度时显示） -->
+                <div id="copper-busbar-weight-dimensions" class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 hidden">
+                    <div class="form-group">
+                        <label for="copper-width-rev" class="block text-neutral font-medium mb-2">宽度 (mm)</label>
+                        <div class="flex">
+                            <input type="number" id="copper-width-rev" step="0.1" min="0" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                placeholder="输入宽度">
+                            <span class="ml-2 flex items-center text-neutral">mm</span>
+                        </div>
+                        <div class="size-selector" id="copper-width-rev-options">
+                            <div class="size-option" data-value="10">10mm</div>
+                            <div class="size-option" data-value="15">15mm</div>
+                            <div class="size-option" data-value="20">20mm</div>
+                            <div class="size-option" data-value="25">25mm</div>
+                            <div class="size-option" data-value="30">30mm</div>
+                            <div class="size-option" data-value="40">40mm</div>
+                            <div class="size-option" data-value="50">50mm</div>
+                            <div class="size-option" data-value="60">60mm</div>
+                            <div class="size-option" data-value="80">80mm</div>
+                            <div class="size-option" data-value="100">100mm</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="copper-thickness-rev" class="block text-neutral font-medium mb-2">厚度 (mm)</label>
+                        <div class="flex">
+                            <input type="number" id="copper-thickness-rev" step="0.1" min="0" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                                placeholder="输入厚度">
+                            <span class="ml-2 flex items-center text-neutral">mm</span>
+                        </div>
+                        <div class="size-selector" id="copper-thickness-rev-options">
+                            <div class="size-option" data-value="3">3mm</div>
+                            <div class="size-option" data-value="4">4mm</div>
+                            <div class="size-option" data-value="5">5mm</div>
+                            <div class="size-option" data-value="6">6mm</div>
+                            <div class="size-option" data-value="8">8mm</div>
+                            <div class="size-option" data-value="10">10mm</div>
+                            <div class="size-option" data-value="12">12mm</div>
+                            <div class="size-option" data-value="15">15mm</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="weight-input" class="block text-neutral font-medium mb-2">重量</label>
+                    <div class="flex">
+                        <input type="number" id="weight-input" step="0.001" min="0" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus"
+                            placeholder="输入重量值">
+                        <select id="weight-unit-rev" class="ml-2 px-3 py-2 border border-gray-300 rounded-lg bg-white input-focus">
+                            <option value="kg">千克 (kg)</option>
+                            <option value="t" id="weight-rev-default-t">吨 (t)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group mt-6">
+                    <label for="length-result" class="block text-neutral font-medium mb-2">计算结果 (长度)</label>
+                    <div class="flex">
+                        <input type="number" id="length-result" readonly 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                            placeholder="长度结果">
+                        <select id="length-unit-rev" class="ml-2 px-3 py-2 border border-gray-300 rounded-lg bg-white input-focus">
+                            <option value="km" id="length-rev-default-km">千米 (km)</option>
+                            <option value="m">米 (m)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 计算按钮 -->
+            <div class="text-center">
+                <button id="calculate-btn" class="bg-primary text-white px-8 py-3 rounded-lg font-medium btn-hover disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fa fa-calculator mr-2"></i>计算
+                </button>
+            </div>
+        </section>
+
+        <!-- 材料信息 -->
+        <section id="about" class="bg-white rounded-2xl p-6 md:p-8 card-shadow">
+            <h3 class="text-2xl font-bold mb-6 text-center">材料信息参考</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h4 class="text-xl font-semibold mb-4 text-primary">钢芯铝绞线 (ACSR)</h4>
+                    <p class="text-neutral mb-4">钢芯铝绞线由铝线和钢线绞合而成，具有良好的导电性能和机械强度，广泛应用于输电线路。</p>
+                    <p class="text-neutral mb-2"><span class="font-medium">常用型号：</span></p>
+                    <ul class="text-neutral text-sm space-y-1 ml-5 list-disc">
+                        <li>JL/G1A-95/15 (380.8kg/km)</li>
+                        <li>JL/G1A-120/20 (466.8kg/km)</li>
+                        <li>JL/G1A-120/25 (526.6kg/km)</li>
+                        <li>JL/G1A-150/20 (549.4kg/km)</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-xl font-semibold mb-4 text-secondary">耐热铝合金导线</h4>
+                    <p class="text-neutral mb-4">耐热铝合金导线具有较高的耐热性能和导电性能，适用于高温环境下的电力传输。</p>
+                    <p class="text-neutral mb-2"><span class="font-medium">已包含的型号：</span></p>
+                    <ul class="text-neutral text-sm space-y-1 ml-5 list-disc">
+                        <li>NAHLGJQ-1440 (NRLH60/G1A,1440/120) - 4.942 kg/m</li>
+                        <li>NAHLGJQ-1250 (NRLH60/G1A,1250/100) - 4.325 kg/m</li>
+                        <li>NAHLGJQ-1000 (NRLH60/G1A,1000/80) - 3.542 kg/m</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-xl font-semibold mb-4 text-amber-500">铜排</h4>
+                    <p class="text-neutral mb-4">铜排是一种大电流导电产品，广泛用于高低压电器、开关触头、配电设备等电气工程。</p>
+                    <p class="text-neutral"><span class="font-medium">密度：</span>8900 kg/m³</p>
+                    <p class="text-neutral"><span class="font-medium">常用规格：</span>厚度3mm-15mm，宽度10mm-100mm</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-xl font-semibold mb-4 text-accent">五金材料</h4>
+                    <p class="text-neutral mb-4">包含槽钢、扁钢和等边角钢，广泛应用于建筑结构、机械制造等领域。</p>
+                    <p class="text-neutral"><span class="font-medium">密度：</span>7850 kg/m³</p>
+                    <p class="text-neutral mb-2"><span class="font-medium">槽钢常用型号：</span>#6.3、#8、#10、#12、#14等</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa fa-calculator text-primary text-xl"></i>
+                        <span class="font-bold">材料长度重量计算器</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-2">专业的工程材料计算工具</p>
+                </div>
+                
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors duration-200">
+                        <i class="fa fa-question-circle"></i> 帮助
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors duration-200">
+                        <i class="fa fa-envelope"></i> 联系我们
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors duration-200">
+                        <i class="fa fa-info-circle"></i> 关于
+                    </a>
+                </div>
+            </div>
+            
+            <div class="mt-6 pt-6 border-t border-gray-800 text-center text-gray-400 text-sm">
+                © 2023 材料长度重量计算器 - 保留所有权利
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 全局变量
+            let selectedMaterial = null;
+            let selectedSubtype = null;
+            let materialDensity = null;
+            let unitWeight = null;
+            
+            // 初始化搜索功能
+            initSearchFunctionality();
+            // 初始化铜排尺寸选择器
+            initCopperSizeSelectors();
+            
+            // DOM 元素
+            const materialCards = document.querySelectorAll('.material-card');
+            const selectedMaterialEl = document.getElementById('selected-material');
+            const selectedSubtypeEl = document.getElementById('selected-subtype');
+            const materialDensityEl = document.getElementById('material-density');
+            const densityValueEl = materialDensityEl.querySelector('span');
+            const calculateBtn = document.getElementById('calculate-btn');
+            
+            // 材料类型选择器
+            const acsrTypeSelector = document.getElementById('acsr-type-selector');
+            const heatResistantTypeSelector = document.getElementById('heat-resistant-type-selector');
+            const hardwareTypeSelector = document.getElementById('hardware-type-selector');
+            const channelSteelTypeSelector = document.getElementById('channel-steel-type-selector');
+            
+            // 材料类型元素
+            const acsrTypeEl = document.getElementById('acsr-type');
+            const heatResistantTypeEl = document.getElementById('heat-resistant-type');
+            const hardwareTypeEl = document.getElementById('hardware-type');
+            const channelSteelTypeEl = document.getElementById('channel-steel-type');
+            
+            // 尺寸输入区域
+            const dimensionsInputs = document.getElementById('dimensions-inputs');
+            const copperBusbarDimensions = document.getElementById('copper-busbar-dimensions');
+            const copperBusbarWeightDimensions = document.getElementById('copper-busbar-weight-dimensions');
+            const flatSteelDimensions = document.getElementById('flat-steel-dimensions');
+            const angleSteelDimensions = document.getElementById('angle-steel-dimensions');
+            const generalLengthInput = document.getElementById('general-length-input');
+            
+            // 选项卡元素
+            const lengthToWeightTab = document.getElementById('length-to-weight-tab');
+            const weightToLengthTab = document.getElementById('weight-to-length-tab');
+            const lengthToWeightEl = document.getElementById('length-to-weight');
+            const weightToLengthEl = document.getElementById('weight-to-length');
+            
+            // 长度转重量元素
+            const generalLengthEl = document.getElementById('general-length');
+            const generalLengthUnitEl = document.getElementById('general-length-unit');
+            const weightResultEl = document.getElementById('weight-result');
+            const weightUnitEl = document.getElementById('weight-unit');
+            
+            // 重量转长度元素
+            const weightInputEl = document.getElementById('weight-input');
+            const weightUnitRevEl = document.getElementById('weight-unit-rev');
+            const lengthResultEl = document.getElementById('length-result');
+            const lengthUnitRevEl = document.getElementById('length-unit-rev');
+            
+            // 单位默认值元素
+            const lengthDefaultKm = document.getElementById('length-default-km');
+            const weightDefaultT = document.getElementById('weight-default-t');
+            const weightRevDefaultT = document.getElementById('weight-rev-default-t');
+            const lengthRevDefaultKm = document.getElementById('length-rev-default-km');
+            
+            // 铜排输入元素
+            const copperWidthEl = document.getElementById('copper-width');
+            const copperThicknessEl = document.getElementById('copper-thickness');
+            const copperLengthEl = document.getElementById('copper-length');
+            const copperLengthUnitEl = document.getElementById('copper-length-unit');
+            
+            // 铜排重量转长度输入元素
+            const copperWidthRevEl = document.getElementById('copper-width-rev');
+            const copperThicknessRevEl = document.getElementById('copper-thickness-rev');
+            
+            // 扁钢输入元素
+            const flatWidthEl = document.getElementById('flat-width');
+            const flatThicknessEl = document.getElementById('flat-thickness');
+            const flatLengthEl = document.getElementById('flat-length');
+            const flatLengthUnitEl = document.getElementById('flat-length-unit');
+            
+            // 等边角钢输入元素
+            const angleSideEl = document.getElementById('angle-side');
+            const angleThicknessEl = document.getElementById('angle-thickness');
+            const angleLengthEl = document.getElementById('angle-length');
+            const angleLengthUnitEl = document.getElementById('angle-length-unit');
+            
+            // 选择材料类型
+            materialCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // 移除其他卡片的选中状态
+                    materialCards.forEach(c => {
+                        c.classList.remove('border-primary', 'bg-primary/5');
+                        c.classList.add('border-transparent');
+                    });
+                    
+                    // 添加当前卡片的选中状态
+                    this.classList.remove('border-transparent');
+                    this.classList.add('border-primary', 'bg-primary/5');
+                    
+                    // 重置所有选择器和输入
+                    resetAllSelectors();
+                    
+                    // 更新选中的材料信息
+                    selectedMaterial = this.dataset.material;
+                    selectedSubtype = null;
+                    materialDensity = parseFloat(this.dataset.density);
+                    unitWeight = null;
+                    
+                    // 更新显示
+                    const materialNames = {
+                        'acsr': '钢芯铝绞线',
+                        'heat-resistant': '耐热铝合金导线',
+                        'copper-busbar': '铜排',
+                        'hardware': '五金材料'
+                    };
+                    
+                    selectedMaterialEl.textContent = materialNames[selectedMaterial];
+                    selectedSubtypeEl.classList.add('hidden');
+                    densityValueEl.textContent = materialDensity;
+                    
+                    // 根据材料类型显示相应的选择器
+                    if (selectedMaterial === 'acsr') {
+                        acsrTypeSelector.classList.remove('hidden');
+                        materialDensityEl.classList.add('hidden');
+                        setUnitDefaults(true);
+                    } else if (selectedMaterial === 'heat-resistant') {
+                        heatResistantTypeSelector.classList.remove('hidden');
+                        materialDensityEl.classList.add('hidden');
+                        setUnitDefaults(true);
+                    } else if (selectedMaterial === 'copper-busbar') {
+                        dimensionsInputs.classList.remove('hidden');
+                        copperBusbarDimensions.classList.remove('hidden');
+                        materialDensityEl.classList.remove('hidden');
+                        setUnitDefaults(false);
+                    } else if (selectedMaterial === 'hardware') {
+                        hardwareTypeSelector.classList.remove('hidden');
+                        materialDensityEl.classList.remove('hidden');
+                        setUnitDefaults(false);
+                    }
+                    
+                    // 重置结果
+                    weightResultEl.value = '';
+                    lengthResultEl.value = '';
+                    
+                    // 检查计算按钮状态
+                    checkCalculateButton();
+                });
+            });
+            
+            // 初始化铜排尺寸选择器
+            function initCopperSizeSelectors() {
+                // 长度转重量的尺寸选择
+                setupSizeSelector('copper-width-options', 'copper-width');
+                setupSizeSelector('copper-thickness-options', 'copper-thickness');
+                
+                // 重量转长度的尺寸选择
+                setupSizeSelector('copper-width-rev-options', 'copper-width-rev');
+                setupSizeSelector('copper-thickness-rev-options', 'copper-thickness-rev');
+            }
+            
+            // 设置尺寸选择器功能
+            function setupSizeSelector(selectorId, inputId) {
+                const container = document.getElementById(selectorId);
+                const input = document.getElementById(inputId);
+                const options = container.querySelectorAll('.size-option');
+                
+                options.forEach(option => {
+                    option.addEventListener('click', function() {
+                        // 更新输入框值
+                        input.value = this.dataset.value;
+                        
+                        // 更新选中状态
+                        options.forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+                        
+                        // 触发计算检查
+                        checkCalculateButton();
+                        
+                        // 如果有足够数据，自动计算
+                        if (!calculateBtn.disabled) {
+                            calculateBtn.click();
+                        }
+                    });
+                });
+                
+                // 手动输入时清除选中状态
+                input.addEventListener('input', function() {
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    checkCalculateButton();
+                });
+            }
+            
+            // 初始化搜索功能
+            function initSearchFunctionality() {
+                setupSearch('acsr');
+                setupSearch('heat-resistant');
+                
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.search-container')) {
+                        document.querySelectorAll('.search-dropdown').forEach(dropdown => {
+                            dropdown.classList.remove('show');
+                        });
+                    }
+                });
+            }
+            
+            // 设置搜索功能
+            function setupSearch(type) {
+                const searchInput = document.getElementById(`${type}-search`);
+                const resultsContainer = document.getElementById(`${type}-search-results`);
+                const selectElement = document.getElementById(`${type}-type`);
+                
+                function performSearch() {
+                    const searchTerm = searchInput.value.trim().toLowerCase();
+                    resultsContainer.innerHTML = '';
+                    
+                    if (searchTerm.length < 1) {
+                        resultsContainer.classList.remove('show');
+                        return;
+                    }
+                    
+                    let hasResults = false;
+                    
+                    for (let i = 0; i < selectElement.options.length; i++) {
+                        const option = selectElement.options[i];
+                        if (option.value === '' || option.disabled) continue;
+                        
+                        const text = option.text.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            hasResults = true;
+                            
+                            const resultItem = document.createElement('div');
+                            resultItem.className = 'search-item';
+                            resultItem.dataset.value = option.value;
+                            
+                            const highlightedText = option.text.replace(
+                                new RegExp(searchTerm, 'gi'),
+                                match => `<span class="search-highlight">${match}</span>`
+                            );
+                            
+                            resultItem.innerHTML = highlightedText;
+                            
+                            resultItem.addEventListener('click', function() {
+                                selectElement.value = this.dataset.value;
+                                selectElement.dispatchEvent(new Event('change'));
+                                resultsContainer.classList.remove('show');
+                            });
+                            
+                            resultsContainer.appendChild(resultItem);
+                        }
+                    }
+                    
+                    if (hasResults) {
+                        resultsContainer.classList.add('show');
+                    } else {
+                        resultsContainer.classList.remove('show');
+                    }
+                }
+                
+                searchInput.addEventListener('input', performSearch);
+                searchInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        performSearch();
+                        
+                        const firstResult = resultsContainer.querySelector('.search-item');
+                        if (firstResult) {
+                            selectElement.value = firstResult.dataset.value;
+                            selectElement.dispatchEvent(new Event('change'));
+                            resultsContainer.classList.remove('show');
+                        }
+                    }
+                });
+                
+                searchInput.addEventListener('focus', function() {
+                    if (this.value.trim().length > 0) {
+                        performSearch();
+                    }
+                });
+            }
+            
+            // 设置单位默认值
+            function setUnitDefaults(useLargeUnits) {
+                if (useLargeUnits) {
+                    generalLengthUnitEl.value = 'km';
+                    weightUnitEl.value = 't';
+                    weightUnitRevEl.value = 't';
+                    lengthUnitRevEl.value = 'km';
+                } else {
+                    generalLengthUnitEl.value = 'm';
+                    weightUnitEl.value = 'kg';
+                    weightUnitRevEl.value = 'kg';
+                    lengthUnitRevEl.value = 'm';
+                }
+            }
+            
+            // 重置所有选择器
+            function resetAllSelectors() {
+                acsrTypeSelector.classList.add('hidden');
+                heatResistantTypeSelector.classList.add('hidden');
+                hardwareTypeSelector.classList.add('hidden');
+                channelSteelTypeSelector.classList.add('hidden');
+                dimensionsInputs.classList.add('hidden');
+                copperBusbarDimensions.classList.add('hidden');
+                copperBusbarWeightDimensions.classList.add('hidden');
+                flatSteelDimensions.classList.add('hidden');
+                angleSteelDimensions.classList.add('hidden');
+                generalLengthInput.classList.add('hidden');
+                
+                // 清空搜索框
+                document.getElementById('acsr-search').value = '';
+                document.getElementById('heat-resistant-search').value = '';
+                // 隐藏搜索结果
+                document.getElementById('acsr-search-results').classList.remove('show');
+                document.getElementById('heat-resistant-search-results').classList.remove('show');
+                
+                acsrTypeEl.value = '';
+                heatResistantTypeEl.value = '';
+                hardwareTypeEl.value = '';
+                channelSteelTypeEl.value = '';
+                
+                // 清空铜排输入
+                copperWidthEl.value = '';
+                copperThicknessEl.value = '';
+                copperLengthEl.value = '';
+                copperWidthRevEl.value = '';
+                copperThicknessRevEl.value = '';
+                
+                // 清除铜排尺寸选择器选中状态
+                document.querySelectorAll('.size-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+            }
+            
+            // 钢芯铝绞线型号选择变化
+            acsrTypeEl.addEventListener('change', function() {
+                if (this.value) {
+                    const selectedOption = this.options[this.selectedIndex];
+                    unitWeight = parseFloat(selectedOption.dataset.weight); // kg/km
+                    generalLengthInput.classList.remove('hidden');
+                } else {
+                    unitWeight = null;
+                    generalLengthInput.classList.add('hidden');
+                }
+                checkCalculateButton();
+            });
+            
+            // 耐热铝合金导线型号选择变化
+            heatResistantTypeEl.addEventListener('change', function() {
+                if (this.value) {
+                    const selectedOption = this.options[this.selectedIndex];
+                    unitWeight = parseFloat(selectedOption.dataset.weight); // kg/m
+                    generalLengthInput.classList.remove('hidden');
+                } else {
+                    unitWeight = null;
+                    generalLengthInput.classList.add('hidden');
+                }
+                checkCalculateButton();
+            });
+            
+            // 五金材料类型选择变化
+            hardwareTypeEl.addEventListener('change', function() {
+                channelSteelTypeSelector.classList.add('hidden');
+                flatSteelDimensions.classList.add('hidden');
+                angleSteelDimensions.classList.add('hidden');
+                generalLengthInput.classList.add('hidden');
+                
+                if (this.value) {
+                    selectedSubtype = this.value;
+                    
+                    const subtypeNames = {
+                        'channel-steel': '槽钢',
+                        'flat-steel': '扁钢',
+                        'angle-steel': '等边角钢'
+                    };
+                    selectedSubtypeEl.textContent = subtypeNames[selectedSubtype];
+                    selectedSubtypeEl.classList.remove('hidden');
+                    
+                    if (selectedSubtype === 'channel-steel') {
+                        channelSteelTypeSelector.classList.remove('hidden');
+                    } else if (selectedSubtype === 'flat-steel') {
+                        dimensionsInputs.classList.remove('hidden');
+                        flatSteelDimensions.classList.remove('hidden');
+                    } else if (selectedSubtype === 'angle-steel') {
+                        dimensionsInputs.classList.remove('hidden');
+                        angleSteelDimensions.classList.remove('hidden');
+                    }
+                } else {
+                    selectedSubtype = null;
+                    selectedSubtypeEl.classList.add('hidden');
+                }
+                checkCalculateButton();
+            });
+            
+            // 槽钢型号选择变化
+            channelSteelTypeEl.addEventListener('change', function() {
+                if (this.value) {
+                    const selectedOption = this.options[this.selectedIndex];
+                    unitWeight = parseFloat(selectedOption.dataset.weight); // kg/m
+                    generalLengthInput.classList.remove('hidden');
+                } else {
+                    unitWeight = null;
+                    generalLengthInput.classList.add('hidden');
+                }
+                checkCalculateButton();
+            });
+            
+            // 选项卡切换
+            lengthToWeightTab.addEventListener('click', function() {
+                lengthToWeightTab.classList.add('text-primary', 'border-b-2', 'border-primary');
+                lengthToWeightTab.classList.remove('text-neutral');
+                
+                weightToLengthTab.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                weightToLengthTab.classList.add('text-neutral');
+                
+                lengthToWeightEl.classList.remove('hidden');
+                weightToLengthEl.classList.add('hidden');
+                
+                // 切换到长度转重量时，如果是铜排则显示对应的输入框
+                if (selectedMaterial === 'copper-busbar') {
+                    copperBusbarDimensions.classList.remove('hidden');
+                    copperBusbarWeightDimensions.classList.add('hidden');
+                }
+                
+                checkCalculateButton();
+            });
+            
+            weightToLengthTab.addEventListener('click', function() {
+                weightToLengthTab.classList.add('text-primary', 'border-b-2', 'border-primary');
+                weightToLengthTab.classList.remove('text-neutral');
+                
+                lengthToWeightTab.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                lengthToWeightTab.classList.add('text-neutral');
+                
+                weightToLengthEl.classList.remove('hidden');
+                lengthToWeightEl.classList.add('hidden');
+                
+                // 切换到重量转长度时，如果是铜排则显示对应的尺寸选择框
+                if (selectedMaterial === 'copper-busbar') {
+                    copperBusbarDimensions.classList.add('hidden');
+                    copperBusbarWeightDimensions.classList.remove('hidden');
+                }
+                
+                checkCalculateButton();
+            });
+            
+            // 检查是否可以启用计算按钮
+            function checkCalculateButton() {
+                if (!selectedMaterial) {
+                    calculateBtn.setAttribute('disabled', 'true');
+                    return;
+                }
+                
+                if (!lengthToWeightEl.classList.contains('hidden')) {
+                    // 长度→重量选项卡
+                    if (selectedMaterial === 'acsr' || 
+                        selectedMaterial === 'heat-resistant' ||
+                        (selectedMaterial === 'hardware' && selectedSubtype === 'channel-steel')) {
+                        if (unitWeight && generalLengthEl.value) {
+                            calculateBtn.removeAttribute('disabled');
+                        } else {
+                            calculateBtn.setAttribute('disabled', 'true');
+                        }
+                    } else if (selectedMaterial === 'copper-busbar') {
+                        if (copperWidthEl.value && copperThicknessEl.value && copperLengthEl.value) {
+                            calculateBtn.removeAttribute('disabled');
+                        } else {
+                            calculateBtn.setAttribute('disabled', 'true');
+                        }
+                    } else if (selectedMaterial === 'hardware') {
+                        if (selectedSubtype === 'flat-steel') {
+                            if (flatWidthEl.value && flatThicknessEl.value && flatLengthEl.value) {
+                                calculateBtn.removeAttribute('disabled');
+                            } else {
+                                calculateBtn.setAttribute('disabled', 'true');
+                            }
+                        } else if (selectedSubtype === 'angle-steel') {
+                            if (angleSideEl.value && angleThicknessEl.value && angleLengthEl.value) {
+                                calculateBtn.removeAttribute('disabled');
+                            } else {
+                                calculateBtn.setAttribute('disabled', 'true');
+                            }
+                        } else {
+                            calculateBtn.setAttribute('disabled', 'true');
+                        }
+                    } else {
+                        calculateBtn.setAttribute('disabled', 'true');
+                    }
+                } else {
+                    // 重量→长度选项卡
+                    if (selectedMaterial === 'acsr' || 
+                        selectedMaterial === 'heat-resistant' ||
+                        (selectedMaterial === 'hardware' && selectedSubtype === 'channel-steel')) {
+                        if (unitWeight && weightInputEl.value) {
+                            calculateBtn.removeAttribute('disabled');
+                        } else {
+                            calculateBtn.setAttribute('disabled', 'true');
+                        }
+                    } else if (selectedMaterial === 'copper-busbar') {
+                        if (copperWidthRevEl.value && copperThicknessRevEl.value && weightInputEl.value) {
+                            calculateBtn.removeAttribute('disabled');
+                        } else {
+                            calculateBtn.setAttribute('disabled', 'true');
+                        }
+                    } else if (selectedMaterial === 'hardware') {
+                        if (selectedSubtype === 'flat-steel') {
+                            if (flatWidthEl.value && flatThicknessEl.value && weightInputEl.value) {
+                                calculateBtn.removeAttribute('disabled');
+                            } else {
+                                calculateBtn.setAttribute('disabled', 'true');
+                            }
+                        } else if (selectedSubtype === 'angle-steel') {
+                            if (angleSideEl.value && angleThicknessEl.value && weightInputEl.value) {
+                                calculateBtn.removeAttribute('disabled');
+                            } else {
+                                calculateBtn.setAttribute('disabled', 'true');
+                            }
+                        } else {
+                            calculateBtn.setAttribute('disabled', 'true');
+                        }
+                    } else {
+                        calculateBtn.setAttribute('disabled', 'true');
+                    }
+                }
+            }
+            
+            // 输入变化时检查按钮状态
+            generalLengthEl.addEventListener('input', checkCalculateButton);
+            copperWidthEl.addEventListener('input', checkCalculateButton);
+            copperThicknessEl.addEventListener('input', checkCalculateButton);
+            copperLengthEl.addEventListener('input', checkCalculateButton);
+            copperWidthRevEl.addEventListener('input', checkCalculateButton);
+            copperThicknessRevEl.addEventListener('input', checkCalculateButton);
+            flatWidthEl.addEventListener('input', checkCalculateButton);
+            flatThicknessEl.addEventListener('input', checkCalculateButton);
+            flatLengthEl.addEventListener('input', checkCalculateButton);
+            angleSideEl.addEventListener('input', checkCalculateButton);
+            angleThicknessEl.addEventListener('input', checkCalculateButton);
+            angleLengthEl.addEventListener('input', checkCalculateButton);
+            weightInputEl.addEventListener('input', checkCalculateButton);
+            
+            // 计算按钮点击事件
+            calculateBtn.addEventListener('click', function() {
+                weightResultEl.value = '';
+                lengthResultEl.value = '';
+                
+                if (selectedMaterial === 'acsr') {
+                    if (!lengthToWeightEl.classList.contains('hidden')) {
+                        calculateAcsrWeightFromLength();
+                    } else {
+                        calculateAcsrLengthFromWeight();
+                    }
+                } else if (selectedMaterial === 'heat-resistant') {
+                    if (!lengthToWeightEl.classList.contains('hidden')) {
+                        calculateHeatResistantWeightFromLength();
+                    } else {
+                        calculateHeatResistantLengthFromWeight();
+                    }
+                } else if (selectedMaterial === 'copper-busbar') {
+                    if (!lengthToWeightEl.classList.contains('hidden')) {
+                        calculateCopperBusbarWeight();
+                    } else {
+                        calculateCopperBusbarLength();
+                    }
+                } else if (selectedMaterial === 'hardware') {
+                    if (selectedSubtype === 'channel-steel') {
+                        if (!lengthToWeightEl.classList.contains('hidden')) {
+                            calculateChannelSteelWeightFromLength();
+                        } else {
+                            calculateChannelSteelLengthFromWeight();
+                        }
+                    } else if (selectedSubtype === 'flat-steel') {
+                        if (!lengthToWeightEl.classList.contains('hidden')) {
+                            calculateFlatSteelWeight();
+                        } else {
+                            calculateFlatSteelLength();
+                        }
+                    } else if (selectedSubtype === 'angle-steel') {
+                        if (!lengthToWeightEl.classList.contains('hidden')) {
+                            calculateAngleSteelWeight();
+                        } else {
+                            calculateAngleSteelLength();
+                        }
+                    }
+                }
+            });
+            
+            // 钢芯铝绞线：从长度计算重量 (kg/km)
+            function calculateAcsrWeightFromLength() {
+                const length = parseFloat(generalLengthEl.value);
+                const lengthUnit = generalLengthUnitEl.value;
+                const weightUnit = weightUnitEl.value;
+                
+                let lengthInKm = length;
+                if (lengthUnit === 'm') {
+                    lengthInKm = length / 1000;
+                }
+                
+                let weightInKg = lengthInKm * unitWeight;
+                let result = weightInKg;
+                
+                if (weightUnit === 't') {
+                    result = weightInKg / 1000;
+                }
+                
+                weightResultEl.value = result.toFixed(3);
+            }
+            
+            // 钢芯铝绞线：从重量计算长度
+            function calculateAcsrLengthFromWeight() {
+                const weight = parseFloat(weightInputEl.value);
+                const weightUnit = weightUnitRevEl.value;
+                const lengthUnit = lengthUnitRevEl.value;
+                
+                let weightInKg = weight;
+                if (weightUnit === 't') {
+                    weightInKg = weight * 1000;
+                }
+                
+                let lengthInKm = weightInKg / unitWeight;
+                let result = lengthInKm;
+                
+                if (lengthUnit === 'm') {
+                    result = lengthInKm * 1000;
+                }
+                
+                lengthResultEl.value = result.toFixed(3);
+            }
+            
+            // 耐热铝合金导线：从长度计算重量 (kg/m)
+            function calculateHeatResistantWeightFromLength() {
+                const length = parseFloat(generalLengthEl.value);
+                const lengthUnit = generalLengthUnitEl.value;
+                const weightUnit = weightUnitEl.value;
+                
+                let lengthInMeters = length;
+                if (lengthUnit === 'km') {
+                    lengthInMeters = length * 1000;
+                }
+                
+                let weightInKg = lengthInMeters * unitWeight;
+                let result = weightInKg;
+                
+                if (weightUnit === 't') {
+                    result = weightInKg / 1000;
+                }
+                
+                weightResultEl.value = result.toFixed(3);
+            }
+            
+            // 耐热铝合金导线：从重量计算长度
+            function calculateHeatResistantLengthFromWeight() {
+                const weight = parseFloat(weightInputEl.value);
+                const weightUnit = weightUnitRevEl.value;
+                const lengthUnit = lengthUnitRevEl.value;
+                
+                let weightInKg = weight;
+                if (weightUnit === 't') {
+                    weightInKg = weight * 1000;
+                }
+                
+                let lengthInMeters = weightInKg / unitWeight;
+                let result = lengthInMeters;
+                
+                if (lengthUnit === 'km') {
+                    result = lengthInMeters / 1000;
+                }
+                
+                lengthResultEl.value = result.toFixed(3);
+            }
+            
+            // 铜排：计算重量
+            function calculateCopperBusbarWeight() {
+                const width = parseFloat(copperWidthEl.value) / 1000;
+                const thickness = parseFloat(copperThicknessEl.value) / 1000;
+                const length = parseFloat(copperLengthEl.value);
+                const lengthUnit = copperLengthUnitEl.value;
+                const weightUnit = weightUnitEl.value;
+                
+                let lengthInMeters = length;
+                if (lengthUnit === 'km') {
+                    lengthInMeters = length * 1000;
+                }
+                
+                const volume = width * thickness * lengthInMeters;
+                let weightInKg = volume * materialDensity;
+                let result = weightInKg;
+                
+                if (weightUnit === 't') {
+                    result = weightInKg / 1000;
+                }
+                
+                weightResultEl.value = result.toFixed(3);
+            }
+            
+            // 铜排：从重量计算长度
+            function calculateCopperBusbarLength() {
+                const width = parseFloat(copperWidthRevEl.value) / 1000;
+                const thickness = parseFloat(copperThicknessRevEl.value) / 1000;
+                const weight = parseFloat(weightInputEl.value);
+                const weightUnit = weightUnitRevEl.value;
+                const lengthUnit = lengthUnitRevEl.value;
+                
+                let weightInKg = weight;
+                if (weightUnit === 't') {
+                    weightInKg = weight * 1000;
+                }
+                
+                const volume = weightInKg / materialDensity;
+                let lengthInMeters = volume / (width * thickness);
+                let result = lengthInMeters;
+                
+                if (lengthUnit === 'km') {
+                    result = lengthInMeters / 1000;
+                }
+                
+                lengthResultEl.value = result.toFixed(3);
+            }
+            
+            // 槽钢：从长度计算重量 (kg/m)
+            function calculateChannelSteelWeightFromLength() {
+                const length = parseFloat(generalLengthEl.value);
+                const lengthUnit = generalLengthUnitEl.value;
+                const weightUnit = weightUnitEl.value;
+                
+                let lengthInMeters = length;
+                if (lengthUnit === 'km') {
+                    lengthInMeters = length * 1000;
+                }
+                
+                let weightInKg = lengthInMeters * unitWeight;
+                let result = weightInKg;
+                
+                if (weightUnit === 't') {
+                    result = weightInKg / 1000;
+                }
+                
+                weightResultEl.value = result.toFixed(3);
+            }
+            
+            // 槽钢：从重量计算长度
+            function calculateChannelSteelLengthFromWeight() {
+                const weight = parseFloat(weightInputEl.value);
+                const weightUnit = weightUnitRevEl.value;
+                const lengthUnit = lengthUnitRevEl.value;
+                
+                let weightInKg = weight;
+                if (weightUnit === 't') {
+                    weightInKg = weight * 1000;
+                }
+                
+                let lengthInMeters = weightInKg / unitWeight;
+                let result = lengthInMeters;
+                
+                if (lengthUnit === 'km') {
+                    result = lengthInMeters / 1000;
+                }
+                
+                lengthResultEl.value = result.toFixed(3);
+            }
+            
+            // 扁钢：计算重量
+            function calculateFlatSteelWeight() {
+                const width = parseFloat(flatWidthEl.value) / 1000;
+                const thickness = parseFloat(flatThicknessEl.value) / 1000;
+                const length = parseFloat(flatLengthEl.value);
+                const lengthUnit = flatLengthUnitEl.value;
+                const weightUnit = weightUnitEl.value;
+                
+                let lengthInMeters = length;
+                if (lengthUnit === 'km') {
+                    lengthInMeters = length * 1000;
+                }
+                
+                const volume = width * thickness * lengthInMeters;
+                let weightInKg = volume * materialDensity;
+                let result = weightInKg;
+                
+                if (weightUnit === 't') {
+                    result = weightInKg / 1000;
+                }
+                
+                weightResultEl.value = result.toFixed(3);
+            }
+            
+            // 扁钢：从重量计算长度
+            function calculateFlatSteelLength() {
+                const width = parseFloat(flatWidthEl.value) / 1000;
+                const thickness = parseFloat(flatThicknessEl.value) / 1000;
+                const weight = parseFloat(weightInputEl.value);
+                const weightUnit = weightUnitRevEl.value;
+                const lengthUnit = lengthUnitRevEl.value;
+                
+                let weightInKg = weight;
+                if (weightUnit === 't') {
+                    weightInKg = weight * 1000;
+                }
+                
+                const volume = weightInKg / materialDensity;
+                let lengthInMeters = volume / (width * thickness);
+                let result = lengthInMeters;
+                
+                if (lengthUnit === 'km') {
+                    result = lengthInMeters / 1000;
+                }
+                
+                lengthResultEl.value = result.toFixed(3);
+            }
+            
+            // 等边角钢：计算重量
+            function calculateAngleSteelWeight() {
+                const side = parseFloat(angleSideEl.value) / 1000;
+                const thickness = parseFloat(angleThicknessEl.value) / 1000;
+                const length = parseFloat(angleLengthEl.value);
+                const lengthUnit = angleLengthUnitEl.value;
+                const weightUnit = weightUnitEl.value;
+                
+                let lengthInMeters = length;
+                if (lengthUnit === 'km') {
+                    lengthInMeters = length * 1000;
+                }
+                
+                const area = 2 * side * thickness - thickness * thickness;
+                const volume = area * lengthInMeters;
+                let weightInKg = volume * materialDensity;
+                let result = weightInKg;
+                
+                if (weightUnit === 't') {
+                    result = weightInKg / 1000;
+                }
+                
+                weightResultEl.value = result.toFixed(3);
+            }
+            
+            // 等边角钢：从重量计算长度
+            function calculateAngleSteelLength() {
+                const side = parseFloat(angleSideEl.value) / 1000;
+                const thickness = parseFloat(angleThicknessEl.value) / 1000;
+                const weight = parseFloat(weightInputEl.value);
+                const weightUnit = weightUnitRevEl.value;
+                const lengthUnit = lengthUnitRevEl.value;
+                
+                let weightInKg = weight;
+                if (weightUnit === 't') {
+                    weightInKg = weight * 1000;
+                }
+                
+                const area = 2 * side * thickness - thickness * thickness;
+                const volume = weightInKg / materialDensity;
+                let lengthInMeters = volume / area;
+                let result = lengthInMeters;
+                
+                if (lengthUnit === 'km') {
+                    result = lengthInMeters / 1000;
+                }
+                
+                lengthResultEl.value = result.toFixed(3);
+            }
+            
+            // 单位变化时重新计算
+            generalLengthUnitEl.addEventListener('change', function() {
+                if (generalLengthEl.value && selectedMaterial) calculateBtn.click();
+            });
+            
+            weightUnitEl.addEventListener('change', function() {
+                if ((generalLengthEl.value || copperWidthEl.value || flatWidthEl.value || angleSideEl.value) && selectedMaterial) {
+                    calculateBtn.click();
+                }
+            });
+            
+            weightUnitRevEl.addEventListener('change', function() {
+                if (weightInputEl.value && selectedMaterial) calculateBtn.click();
+            });
+            
+            lengthUnitRevEl.addEventListener('change', function() {
+                if (weightInputEl.value && selectedMaterial) calculateBtn.click();
+            });
+            
+            copperLengthUnitEl.addEventListener('change', function() {
+                if (copperWidthEl.value && copperThicknessEl.value && copperLengthEl.value) {
+                    calculateBtn.click();
+                }
+            });
+            
+            // 输入变化时重新计算
+            copperWidthEl.addEventListener('input', function() {
+                if (this.value && copperThicknessEl.value && copperLengthEl.value) {
+                    calculateBtn.click();
+                }
+            });
+            
+            copperThicknessEl.addEventListener('input', function() {
+                if (this.value && copperWidthEl.value && copperLengthEl.value) {
+                    calculateBtn.click();
+                }
+            });
+            
+            copperLengthEl.addEventListener('input', function() {
+                if (this.value && copperWidthEl.value && copperThicknessEl.value) {
+                    calculateBtn.click();
+                }
+            });
+            
+            copperWidthRevEl.addEventListener('input', function() {
+                if (this.value && copperThicknessRevEl.value && weightInputEl.value) {
+                    calculateBtn.click();
+                }
+            });
+            
+            copperThicknessRevEl.addEventListener('input', function() {
+                if (this.value && copperWidthRevEl.value && weightInputEl.value) {
+                    calculateBtn.click();
+                }
+            });
+            
+            // 选项卡切换时检查按钮状态
+            lengthToWeightTab.addEventListener('click', checkCalculateButton);
+            weightToLengthTab.addEventListener('click', checkCalculateButton);
+            
+            // 滚动时改变导航栏样式
+            window.addEventListener('scroll', function() {
+                const header = document.querySelector('header');
+                if (window.scrollY > 50) {
+                    header.classList.add('py-2');
+                    header.classList.remove('py-4');
+                } else {
+                    header.classList.add('py-4');
+                    header.classList.remove('py-2');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
